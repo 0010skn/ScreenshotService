@@ -13,6 +13,8 @@ if %errorlevel% neq 0 (
 
 :: Check and install dependencies
 echo Checking and installing dependencies...
+python -m pip install --upgrade pip
+pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
 pip install -r requirements.txt
 
 :: Start the application
