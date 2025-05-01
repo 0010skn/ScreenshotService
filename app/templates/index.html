@@ -69,6 +69,16 @@
         border: 1px solid #e2e8f0;
         border-radius: 0.375rem;
       }
+      /* 标签切换样式 */
+      .tab-btn {
+        padding: 0.5rem 1rem;
+        border-bottom: 2px solid transparent;
+      }
+      .tab-btn.active {
+        border-bottom-color: #3b82f6;
+        color: #3b82f6;
+        font-weight: 600;
+      }
     </style>
   </head>
   <body class="bg-gray-100 min-h-screen">
@@ -79,16 +89,33 @@
         <p id="last-update" class="text-sm text-gray-500 mt-1">
           上次更新: <span></span>
         </p>
-        <div class="mt-3">
+        <div class="mt-3 flex space-x-2">
           <a
             href="#"
             id="latest-link"
             class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded inline-block"
           >
-            查看最新快照
+            查看最新截图
+          </a>
+          <a
+            href="#"
+            id="latest-html-link"
+            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded inline-block"
+          >
+            查看最新HTML
           </a>
         </div>
       </header>
+
+      <!-- 标签切换 -->
+      <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div class="flex border-b">
+          <button class="tab-btn active" data-tab="screenshots">
+            截图快照
+          </button>
+          <button class="tab-btn" data-tab="html">HTML快照</button>
+        </div>
+      </div>
 
       <!-- 搜索和筛选区域 -->
       <div class="bg-white rounded-lg shadow-md p-4 mb-6">
@@ -130,11 +157,22 @@
         </div>
       </div>
 
-      <!-- 快照预览区域 -->
-      <div
-        id="screenshots-container"
-        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-      ></div>
+      <!-- 快照内容区域 -->
+      <div class="tab-content active" id="screenshots-tab">
+        <!-- 快照预览区域 -->
+        <div
+          id="screenshots-container"
+          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+        ></div>
+      </div>
+
+      <div class="tab-content hidden" id="html-tab">
+        <!-- HTML快照预览区域 -->
+        <div
+          id="html-container"
+          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+        ></div>
+      </div>
 
       <!-- 分页控制区域 -->
       <div class="mt-8 flex justify-center" id="pagination-container">
@@ -154,8 +192,8 @@
       </div>
 
       <!-- 无快照时显示提示 -->
-      <div id="no-screenshots" class="text-center py-12 hidden">
-        <p class="text-gray-600 text-lg">没有找到符合条件的截图</p>
+      <div id="no-items" class="text-center py-12 hidden">
+        <p class="text-gray-600 text-lg">没有找到符合条件的内容</p>
       </div>
 
       <!-- API 信息 -->
@@ -186,6 +224,24 @@
               >/api/latest</code
             >
           </div>
+          <div>
+            <h3 class="font-medium text-gray-700">获取所有HTML快照列表：</h3>
+            <code class="bg-gray-100 px-2 py-1 rounded text-sm"
+              >/api/html_files?page=1&page_size=12</code
+            >
+          </div>
+          <div>
+            <h3 class="font-medium text-gray-700">获取特定HTML快照：</h3>
+            <code class="bg-gray-100 px-2 py-1 rounded text-sm"
+              >/api/html/{timestamp}</code
+            >
+          </div>
+          <div>
+            <h3 class="font-medium text-gray-700">获取最新HTML快照：</h3>
+            <code class="bg-gray-100 px-2 py-1 rounded text-sm"
+              >/api/latest_html</code
+            >
+          </div>
         </div>
       </div>
 
@@ -211,12 +267,17 @@
         isLoading: false,
         autoRefreshInterval: 3 * 60 * 1000, // 3分钟自动刷新一次
         lastRefreshTime: 0,
+        currentTab: "screenshots", // 当前选中的标签页
       };
 
       // DOM 元素
       const elements = {
-        container: document.getElementById("screenshots-container"),
-        noScreenshots: document.getElementById("no-screenshots"),
+        screenshotsTab: document.getElementById("screenshots-tab"),
+        htmlTab: document.getElementById("html-tab"),
+        tabButtons: document.querySelectorAll(".tab-btn"),
+        screenshotsContainer: document.getElementById("screenshots-container"),
+        htmlContainer: document.getElementById("html-container"),
+        noItems: document.getElementById("no-items"),
         lastUpdate: document.querySelector("#last-update span"),
         pagination: document.getElementById("pagination-container"),
         pageNumbers: document.getElementById("page-numbers"),
@@ -228,6 +289,7 @@
         searchBtn: document.getElementById("search-btn"),
         resetBtn: document.getElementById("reset-btn"),
         latestLink: document.getElementById("latest-link"),
+        latestHtmlLink: document.getElementById("latest-html-link"),
       };
 
       // 初始化
@@ -238,6 +300,36 @@
         elements.searchBtn.addEventListener("click", search);
         elements.resetBtn.addEventListener("click", resetFilters);
         elements.latestLink.addEventListener("click", openLatestScreenshot);
+        elements.latestHtmlLink.addEventListener("click", openLatestHtml);
+
+        // 标签页切换
+        elements.tabButtons.forEach((btn) => {
+          btn.addEventListener("click", function () {
+            // 移除其他标签页的active类
+            elements.tabButtons.forEach((b) => b.classList.remove("active"));
+            // 为当前标签页添加active类
+            this.classList.add("active");
+
+            // 隐藏所有内容区域
+            document.querySelectorAll(".tab-content").forEach((content) => {
+              content.classList.add("hidden");
+              content.classList.remove("active");
+            });
+
+            // 显示当前内容区域
+            const tabName = this.getAttribute("data-tab");
+            const tabContent = document.getElementById(`${tabName}-tab`);
+            tabContent.classList.remove("hidden");
+            tabContent.classList.add("active");
+
+            // 更新当前标签页状态
+            state.currentTab = tabName;
+
+            // 重置分页并加载数据
+            state.currentPage = 1;
+            loadItems();
+          });
+        });
 
         // 添加页面可见性变化监听
         document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -269,209 +361,322 @@
           }
         });
 
-        // 加载数据
-        loadScreenshots();
+        // 首次加载数据
+        loadItems();
 
-        // 设置定时刷新
-        setInterval(refreshData, state.autoRefreshInterval);
+        // 设置自动刷新
+        setInterval(function () {
+          if (
+            !state.isLoading &&
+            document.visibilityState === "visible" &&
+            Date.now() - state.lastRefreshTime > state.autoRefreshInterval
+          ) {
+            loadItems();
+          }
+        }, 60000); // 每分钟检查一次是否需要刷新
       }
 
-      // 格式化日期时间
-      function formatDateTime(dateString) {
-        const date = new Date(dateString);
-        return date.toLocaleString("zh-CN", {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
+      // 处理页面可见性变化
+      function handleVisibilityChange() {
+        if (
+          document.visibilityState === "visible" &&
+          Date.now() - state.lastRefreshTime > state.autoRefreshInterval
+        ) {
+          loadItems();
+        }
+      }
+
+      // 加载快照数据
+      function loadItems() {
+        // 防止重复加载
+        if (state.isLoading) return;
+        state.isLoading = true;
+
+        // 构建API URL
+        let apiUrl =
+          state.currentTab === "screenshots"
+            ? "/api/screenshots"
+            : "/api/html_files";
+        apiUrl += `?page=${state.currentPage}&page_size=${state.pageSize}`;
+
+        // 添加时间筛选参数
+        if (state.exactTime) {
+          apiUrl += `&exact_time=${state.exactTime}`;
+        } else {
+          if (state.startTime) {
+            apiUrl += `&start_time=${state.startTime}`;
+          }
+          if (state.endTime) {
+            apiUrl += `&end_time=${state.endTime}`;
+          }
+        }
+
+        // 发起API请求
+        fetch(apiUrl)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("网络响应异常");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            // 更新状态
+            state.totalPages = data.pagination.total_pages;
+            state.totalCount = data.pagination.total_count;
+            state.lastRefreshTime = Date.now();
+
+            // 更新最后更新时间显示
+            const now = new Date();
+            elements.lastUpdate.textContent = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+
+            // 渲染数据
+            if (state.currentTab === "screenshots") {
+              renderScreenshots(data.items);
+            } else {
+              renderHtmlFiles(data.items);
+            }
+
+            // 更新分页控件
+            renderPagination();
+
+            // 显示或隐藏无数据提示
+            elements.noItems.classList.toggle("hidden", data.items.length > 0);
+          })
+          .catch((error) => {
+            console.error("加载数据失败:", error);
+          })
+          .finally(() => {
+            state.isLoading = false;
+          });
+      }
+
+      // 渲染截图列表
+      function renderScreenshots(screenshots) {
+        elements.screenshotsContainer.innerHTML = "";
+
+        screenshots.forEach((item) => {
+          const card = document.createElement("div");
+          card.className =
+            "screenshot-card bg-white rounded-lg shadow-md overflow-hidden relative";
+
+          // 缩略图
+          const img = document.createElement("img");
+          img.src = `/static/${item.thumbnail}`;
+          img.alt = `截图 ${item.datetime}`;
+          img.className = "w-full h-32 md:h-40 object-cover";
+          img.loading = "lazy";
+
+          // 信息区域
+          const info = document.createElement("div");
+          info.className = "p-3";
+
+          const datetime = document.createElement("div");
+          datetime.className = "text-sm text-gray-700";
+          datetime.textContent = item.datetime;
+
+          info.appendChild(datetime);
+
+          // 操作区域
+          const actions = document.createElement("div");
+          actions.className = "flex justify-between mt-2";
+
+          // 查看原图按钮
+          const viewBtn = document.createElement("a");
+          viewBtn.href = `/api/screenshot/${item.timestamp}`;
+          viewBtn.className =
+            "text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded";
+          viewBtn.textContent = "查看原图";
+          viewBtn.target = "_blank";
+
+          // 添加查看HTML按钮（如果有）
+          const htmlBtn = document.createElement("a");
+          if (item.html) {
+            htmlBtn.href = `/api/html/${item.timestamp}`;
+            htmlBtn.className =
+              "text-xs bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded";
+            htmlBtn.textContent = "查看HTML";
+            htmlBtn.target = "_blank";
+          } else {
+            htmlBtn.className =
+              "text-xs bg-gray-300 text-gray-500 px-2 py-1 rounded cursor-not-allowed";
+            htmlBtn.textContent = "无HTML";
+          }
+
+          actions.appendChild(viewBtn);
+          actions.appendChild(htmlBtn);
+
+          info.appendChild(actions);
+
+          card.appendChild(img);
+          card.appendChild(info);
+
+          elements.screenshotsContainer.appendChild(card);
         });
       }
 
-      // 更新最后刷新时间
-      function updateLastRefreshTime() {
-        elements.lastUpdate.textContent = new Date().toLocaleString("zh-CN");
+      // 渲染HTML文件列表
+      function renderHtmlFiles(htmlFiles) {
+        elements.htmlContainer.innerHTML = "";
+
+        htmlFiles.forEach((item) => {
+          const card = document.createElement("div");
+          card.className = "bg-white rounded-lg shadow-md overflow-hidden";
+
+          // 信息区域
+          const info = document.createElement("div");
+          info.className = "p-4";
+
+          const title = document.createElement("div");
+          title.className = "font-medium text-gray-800 mb-2";
+          title.textContent = `HTML快照 ${item.timestamp}`;
+
+          const datetime = document.createElement("div");
+          datetime.className = "text-sm text-gray-600 mb-3";
+          datetime.textContent = item.datetime;
+
+          // 操作按钮
+          const viewBtn = document.createElement("a");
+          viewBtn.href = `/api/html/${item.timestamp}`;
+          viewBtn.className =
+            "inline-block bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm";
+          viewBtn.textContent = "查看HTML";
+          viewBtn.target = "_blank";
+
+          info.appendChild(title);
+          info.appendChild(datetime);
+          info.appendChild(viewBtn);
+
+          card.appendChild(info);
+          elements.htmlContainer.appendChild(card);
+        });
       }
 
-      // ISO日期时间格式转换为API需要的格式
-      function isoToTimestamp(isoString) {
-        if (!isoString) return null;
-        const date = new Date(isoString);
-        return (
-          date.getFullYear() +
-          ("0" + (date.getMonth() + 1)).slice(-2) +
-          ("0" + date.getDate()).slice(-2) +
-          "_" +
-          ("0" + date.getHours()).slice(-2) +
-          ("0" + date.getMinutes()).slice(-2) +
-          ("0" + date.getSeconds()).slice(-2)
-        );
-      }
-
-      // 时间戳格式转换为ISO日期时间格式
-      function timestampToISO(timestamp) {
-        if (!timestamp) return "";
-        const year = timestamp.substring(0, 4);
-        const month = timestamp.substring(4, 6);
-        const day = timestamp.substring(6, 8);
-        const hour = timestamp.substring(9, 11);
-        const minute = timestamp.substring(11, 13);
-        const second = timestamp.substring(13, 15);
-        return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
-      }
-
-      // 创建截图卡片元素
-      function createScreenshotCard(screenshot) {
-        return `
-          <div
-            class="bg-white rounded-lg shadow-md overflow-hidden screenshot-card relative"
-            data-timestamp="${screenshot.timestamp}"
-          >
-            <div class="relative">
-              <img
-                src="/static/${screenshot.thumbnail}"
-                alt="预览"
-                class="w-full h-48 object-cover"
-              />
-              <div
-                class="hover-overlay absolute inset-0 bg-black bg-opacity-50 opacity-0 transition-opacity flex items-center justify-center"
-              >
-                <a
-                  href="/static/screenshots/${screenshot.filename}"
-                  target="_blank"
-                  class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition"
-                  >查看原图</a
-                >
-              </div>
-            </div>
-            <div class="p-4">
-              <p class="text-gray-700 font-medium">快照时间</p>
-              <p class="text-gray-500">${screenshot.datetime}</p>
-              <div class="mt-2 flex justify-between">
-                <a
-                  href="/static/screenshots/${screenshot.filename}"
-                  download
-                  class="text-blue-500 hover:text-blue-700 text-sm"
-                  >下载</a
-                >
-                <a
-                  href="/api/screenshot/${screenshot.timestamp}"
-                  class="text-green-500 hover:text-green-700 text-sm"
-                  >API 链接</a
-                >
-              </div>
-            </div>
-          </div>
-        `;
-      }
-
-      // 渲染分页
+      // 渲染分页控件
       function renderPagination() {
-        const { currentPage, totalPages } = state;
-
         // 更新分页按钮状态
-        elements.prevBtn.disabled = currentPage <= 1;
-        elements.prevBtn.classList.toggle("disabled", currentPage <= 1);
-
-        elements.nextBtn.disabled = currentPage >= totalPages;
+        elements.prevBtn.classList.toggle("disabled", state.currentPage <= 1);
         elements.nextBtn.classList.toggle(
           "disabled",
-          currentPage >= totalPages
+          state.currentPage >= state.totalPages
         );
 
-        // 生成页码按钮
+        // 渲染页码
         elements.pageNumbers.innerHTML = "";
 
-        // 确定显示的页码范围（最多显示5个页码）
-        let startPage = Math.max(1, currentPage - 2);
-        let endPage = Math.min(totalPages, startPage + 4);
+        // 确定要显示的页码范围
+        let startPage = Math.max(1, state.currentPage - 2);
+        let endPage = Math.min(state.totalPages, startPage + 4);
 
+        // 如果页码不足5个，尝试从前面补充
         if (endPage - startPage < 4) {
           startPage = Math.max(1, endPage - 4);
         }
 
-        // 添加省略号和第一页
+        // 添加第一页按钮（如果不在显示范围内）
         if (startPage > 1) {
           addPageButton(1);
           if (startPage > 2) {
-            const ellipsis = document.createElement("span");
-            ellipsis.textContent = "...";
-            ellipsis.className = "px-3 py-1 text-gray-500";
-            elements.pageNumbers.appendChild(ellipsis);
+            addEllipsis();
           }
         }
 
-        // 添加页码按钮
+        // 添加中间的页码
         for (let i = startPage; i <= endPage; i++) {
           addPageButton(i);
         }
 
-        // 添加省略号和最后一页
-        if (endPage < totalPages) {
-          if (endPage < totalPages - 1) {
-            const ellipsis = document.createElement("span");
-            ellipsis.textContent = "...";
-            ellipsis.className = "px-3 py-1 text-gray-500";
-            elements.pageNumbers.appendChild(ellipsis);
+        // 添加最后一页按钮（如果不在显示范围内）
+        if (endPage < state.totalPages) {
+          if (endPage < state.totalPages - 1) {
+            addEllipsis();
           }
-          addPageButton(totalPages);
+          addPageButton(state.totalPages);
         }
 
-        // 显示或隐藏分页区域
-        elements.pagination.style.display = totalPages > 1 ? "flex" : "none";
+        // 隐藏分页控件（如果总页数为0或1）
+        elements.pagination.classList.toggle("hidden", state.totalPages <= 1);
       }
 
       // 添加页码按钮
       function addPageButton(pageNum) {
         const btn = document.createElement("button");
-        btn.textContent = pageNum;
         btn.className = `pagination-btn px-3 py-1 rounded border ${
           pageNum === state.currentPage ? "active" : ""
         }`;
+        btn.textContent = pageNum;
         btn.addEventListener("click", () => goToPage(pageNum));
         elements.pageNumbers.appendChild(btn);
       }
 
-      // 跳转到特定页
-      function goToPage(page) {
-        if (page === state.currentPage) return;
-        state.currentPage = page;
-        loadScreenshots();
+      // 添加省略号
+      function addEllipsis() {
+        const span = document.createElement("span");
+        span.className = "px-3 py-1";
+        span.textContent = "...";
+        elements.pageNumbers.appendChild(span);
+      }
+
+      // 跳转到指定页
+      function goToPage(pageNum) {
+        if (
+          pageNum !== state.currentPage &&
+          pageNum >= 1 &&
+          pageNum <= state.totalPages
+        ) {
+          state.currentPage = pageNum;
+          loadItems();
+          // 滚动到顶部
+          window.scrollTo(0, 0);
+        }
       }
 
       // 上一页
       function goToPrevPage() {
         if (state.currentPage > 1) {
-          state.currentPage--;
-          loadScreenshots();
+          goToPage(state.currentPage - 1);
         }
       }
 
       // 下一页
       function goToNextPage() {
         if (state.currentPage < state.totalPages) {
-          state.currentPage++;
-          loadScreenshots();
+          goToPage(state.currentPage + 1);
         }
       }
 
       // 搜索
       function search() {
-        // 获取筛选条件
-        state.exactTime = isoToTimestamp(elements.exactTimeInput.value);
+        // 重置页码
+        state.currentPage = 1;
 
-        if (!state.exactTime) {
-          state.startTime = isoToTimestamp(elements.startTimeInput.value);
-          state.endTime = isoToTimestamp(elements.endTimeInput.value);
-        } else {
+        // 获取搜索参数
+        if (elements.exactTimeInput.value) {
+          // 精确时间搜索
+          const date = new Date(elements.exactTimeInput.value);
+          state.exactTime = formatTimestamp(date);
           state.startTime = null;
           state.endTime = null;
+        } else {
+          // 时间范围搜索
+          state.exactTime = null;
+
+          if (elements.startTimeInput.value) {
+            const startDate = new Date(elements.startTimeInput.value);
+            state.startTime = formatTimestamp(startDate);
+          } else {
+            state.startTime = null;
+          }
+
+          if (elements.endTimeInput.value) {
+            const endDate = new Date(elements.endTimeInput.value);
+            state.endTime = formatTimestamp(endDate);
+          } else {
+            state.endTime = null;
+          }
         }
 
-        // 重置到第一页并加载数据
-        state.currentPage = 1;
-        loadScreenshots();
+        // 加载数据
+        loadItems();
       }
 
       // 重置筛选条件
@@ -479,6 +684,7 @@
         elements.startTimeInput.value = "";
         elements.endTimeInput.value = "";
         elements.exactTimeInput.value = "";
+
         elements.startTimeInput.disabled = false;
         elements.endTimeInput.disabled = false;
         elements.exactTimeInput.disabled = false;
@@ -488,200 +694,63 @@
         state.exactTime = null;
         state.currentPage = 1;
 
-        loadScreenshots();
+        loadItems();
       }
 
-      // 加载截图数据
-      function loadScreenshots() {
-        if (state.isLoading) return;
-        state.isLoading = true;
+      // 格式化时间戳
+      function formatTimestamp(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        const seconds = String(date.getSeconds()).padStart(2, "0");
 
-        // 记录刷新时间
-        state.lastRefreshTime = Date.now();
-
-        // 构建API URL
-        let url = `/api/screenshots?page=${state.currentPage}&page_size=${state.pageSize}`;
-
-        if (state.exactTime) {
-          url += `&exact_time=${state.exactTime}`;
-        } else {
-          if (state.startTime) url += `&start_time=${state.startTime}`;
-          if (state.endTime) url += `&end_time=${state.endTime}`;
-        }
-
-        // 显示加载提示
-        elements.container.innerHTML =
-          '<div class="col-span-full text-center py-12"><p class="text-gray-500">加载中...</p></div>';
-
-        // 获取数据
-        fetch(url)
-          .then((response) => response.json())
-          .then((data) => {
-            // 更新状态
-            state.totalPages = data.pagination.total_pages;
-            state.totalCount = data.pagination.total_count;
-
-            // 渲染截图
-            if (data.items.length === 0) {
-              elements.container.innerHTML = "";
-              elements.noScreenshots.classList.remove("hidden");
-            } else {
-              elements.noScreenshots.classList.add("hidden");
-
-              let html = "";
-              data.items.forEach((screenshot) => {
-                html += createScreenshotCard(screenshot);
-              });
-              elements.container.innerHTML = html;
-            }
-
-            // 渲染分页
-            renderPagination();
-
-            // 更新最后刷新时间
-            updateLastRefreshTime();
-          })
-          .catch((error) => {
-            console.error("加载截图失败:", error);
-            elements.container.innerHTML =
-              '<div class="col-span-full text-center py-12"><p class="text-red-500">加载失败，请重试</p></div>';
-          })
-          .finally(() => {
-            state.isLoading = false;
-          });
+        return `${year}${month}${day}_${hours}${minutes}${seconds}`;
       }
 
-      // 刷新数据（用于定时刷新）
-      function refreshData() {
-        // 只有在第一页且没有筛选条件时才自动刷新
-        if (
-          state.currentPage === 1 &&
-          !state.startTime &&
-          !state.endTime &&
-          !state.exactTime
-        ) {
-          // 完全无感刷新：只更新有变化的内容
-          silentRefresh();
-          updateLatestLink(); // 更新最新快照链接
-        }
-      }
+      // 打开最新截图
+      function openLatestScreenshot(e) {
+        e.preventDefault();
 
-      // 无感刷新：只获取新数据，不重新加载整个页面
-      function silentRefresh() {
-        // 如果页面不可见或当前正在加载，则跳过刷新
-        if (document.hidden || state.isLoading) return;
-
-        // 构建API URL
-        let url = `/api/screenshots?page=1&page_size=${state.pageSize}`;
-
-        fetch(url)
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.items.length === 0) return;
-
-            const currentItems = Array.from(
-              document.querySelectorAll(".screenshot-card")
-            ).map((card) => card.dataset.timestamp);
-
-            // 寻找新项目
-            const newItems = data.items.filter(
-              (item) => !currentItems.includes(item.timestamp)
-            );
-
-            // 如果有新项目，无感更新DOM
-            if (newItems.length > 0) {
-              // 获取当前容器
-              const container = elements.container;
-
-              // 创建新的项目
-              newItems.forEach((item) => {
-                // 创建新的卡片元素
-                const tempDiv = document.createElement("div");
-                tempDiv.innerHTML = createScreenshotCard(item);
-                const newCard = tempDiv.firstElementChild;
-
-                // 添加新卡片到容器开头并设置透明度为0
-                newCard.style.opacity = "0";
-                newCard.style.transition = "opacity 0.5s ease-in-out";
-                if (container.firstChild) {
-                  container.insertBefore(newCard, container.firstChild);
-                } else {
-                  container.appendChild(newCard);
-                }
-
-                // 移除多余的卡片，保持每页的数量一致
-                if (container.children.length > state.pageSize) {
-                  const lastElements = Array.from(container.children).slice(
-                    state.pageSize
-                  );
-                  lastElements.forEach((el) => el.remove());
-                }
-
-                // 淡入显示新卡片
-                setTimeout(() => {
-                  newCard.style.opacity = "1";
-                }, 10);
-              });
-
-              // 更新页面计数信息（如果需要）
-              if (state.totalCount !== data.pagination.total_count) {
-                state.totalCount = data.pagination.total_count;
-                state.totalPages = data.pagination.total_pages;
-                renderPagination();
-              }
-
-              // 更新最后刷新时间
-              updateLastRefreshTime();
-              console.log(`静默添加了 ${newItems.length} 个新快照`);
-            }
-          })
-          .catch((error) => {
-            console.error("静默刷新失败:", error);
-          });
-      }
-
-      // 处理页面可见性变化
-      function handleVisibilityChange() {
-        if (!document.hidden) {
-          // 如果页面变为可见状态，且距离上次刷新时间超过了刷新间隔，则立即刷新
-          const timeSinceLastRefresh = Date.now() - state.lastRefreshTime;
-          if (timeSinceLastRefresh > state.autoRefreshInterval) {
-            refreshData();
-          }
-        }
-      }
-
-      // 更新最新快照链接
-      function updateLatestLink() {
         fetch("/api/latest")
           .then((response) => {
-            if (!response.ok) throw new Error("No screenshots available");
+            if (!response.ok) {
+              throw new Error("网络响应异常");
+            }
             return response.json();
           })
           .then((data) => {
-            elements.latestLink.href = `/static/screenshots/${data.screenshot.filename}`;
-            elements.latestLink.setAttribute("target", "_blank");
+            window.open(data.direct_url, "_blank");
           })
           .catch((error) => {
-            console.error("获取最新快照失败:", error);
-            elements.latestLink.href = "#";
-            elements.latestLink.removeAttribute("target");
+            console.error("获取最新截图失败:", error);
+            alert("获取最新截图失败");
           });
       }
 
-      // 打开最新快照
-      function openLatestScreenshot(e) {
-        if (elements.latestLink.getAttribute("target") !== "_blank") {
-          e.preventDefault();
-          alert("暂无快照可用");
-        }
+      // 打开最新HTML快照
+      function openLatestHtml(e) {
+        e.preventDefault();
+
+        fetch("/api/latest_html")
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("网络响应异常");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            window.open(data.direct_url, "_blank");
+          })
+          .catch((error) => {
+            console.error("获取最新HTML快照失败:", error);
+            alert("获取最新HTML快照失败");
+          });
       }
 
-      // 初始化页面
-      document.addEventListener("DOMContentLoaded", () => {
-        init();
-        updateLatestLink(); // 初始化最新快照链接
-      });
+      // 页面加载完成后初始化
+      document.addEventListener("DOMContentLoaded", init);
     </script>
   </body>
 </html>
