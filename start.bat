@@ -4,7 +4,7 @@ setlocal enabledelayedexpansion
 echo Starting Screenshot Service...
 
 :: Check if Python is installed
-py --version >nul 2>&1
+python --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo [ERROR] Python environment not detected. Please install Python 3.6+
     pause
@@ -19,7 +19,7 @@ pip install -r requirements.txt
 
 :: Start the application
 echo Starting the screenshot service...
-py -m app.main
+python -m app.main
 
 :: Keep window open if application closes unexpectedly
 pause 

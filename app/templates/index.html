@@ -16,16 +16,21 @@
     <div class="container mx-auto px-4 py-8">
       <header class="mb-8">
         <h1 class="text-3xl font-bold text-gray-800">服务器截屏监控</h1>
-        <p class="text-gray-600">自动每分钟截屏一次，最多保留最新的10张截屏</p>
+        <p class="text-gray-600">自动每10秒截屏一次，最多保留最新的10张截屏</p>
+        <p id="last-update" class="text-sm text-gray-500 mt-1">
+          上次更新: <span></span>
+        </p>
       </header>
 
       <!-- 截屏预览区域 -->
       <div
+        id="screenshots-container"
         class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
       >
         {% for screenshot in screenshots %}
         <div
           class="bg-white rounded-lg shadow-md overflow-hidden screenshot-card relative"
+          data-timestamp="{{ screenshot.timestamp }}"
         >
           <div class="relative">
             <img
@@ -66,11 +71,12 @@
       </div>
 
       <!-- 无截屏时显示提示 -->
-      {% if not screenshots %}
-      <div class="text-center py-12">
+      <div
+        id="no-screenshots"
+        class="text-center py-12 {% if screenshots %}hidden{% endif %}"
+      >
         <p class="text-gray-600 text-lg">目前还没有截屏，请等待...</p>
       </div>
-      {% endif %}
 
       <!-- API 信息 -->
       <div class="mt-12 bg-white rounded-lg shadow-md p-6">
@@ -98,10 +104,141 @@
     </div>
 
     <script>
-      // 自动刷新页面
-      setTimeout(function () {
-        location.reload();
-      }, 60000); // 每1分钟刷新一次
+      // 当前显示的截图时间戳，用于比较是否有新截图
+      let currentScreenshots = [];
+      const screenshotsContainer = document.getElementById(
+        "screenshots-container"
+      );
+      const noScreenshotsMessage = document.getElementById("no-screenshots");
+      const lastUpdateElement = document.querySelector("#last-update span");
+
+      // 设置初始截图数据
+      document.querySelectorAll(".screenshot-card").forEach((card) => {
+        currentScreenshots.push(card.dataset.timestamp);
+      });
+
+      // 格式化日期时间
+      function formatDateTime(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleString("zh-CN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      }
+
+      // 更新最后刷新时间
+      function updateLastRefreshTime() {
+        lastUpdateElement.textContent = new Date().toLocaleString("zh-CN");
+      }
+
+      // 创建截图卡片元素
+      function createScreenshotCard(screenshot) {
+        return `
+          <div
+            class="bg-white rounded-lg shadow-md overflow-hidden screenshot-card relative"
+            data-timestamp="${screenshot.timestamp}"
+          >
+            <div class="relative">
+              <img
+                src="/static/${screenshot.thumbnail}"
+                alt="截屏预览"
+                class="w-full h-48 object-cover"
+              />
+              <div
+                class="hover-overlay absolute inset-0 bg-black bg-opacity-50 opacity-0 transition-opacity flex items-center justify-center"
+              >
+                <a
+                  href="/static/screenshots/${screenshot.filename}"
+                  target="_blank"
+                  class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition"
+                  >查看原图</a
+                >
+              </div>
+            </div>
+            <div class="p-4">
+              <p class="text-gray-700 font-medium">截屏时间</p>
+              <p class="text-gray-500">${screenshot.datetime}</p>
+              <div class="mt-2 flex justify-between">
+                <a
+                  href="/static/screenshots/${screenshot.filename}"
+                  download
+                  class="text-blue-500 hover:text-blue-700 text-sm"
+                  >下载</a
+                >
+                <a
+                  href="/api/screenshot/${screenshot.timestamp}"
+                  class="text-green-500 hover:text-green-700 text-sm"
+                  >API 链接</a
+                >
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // 无感刷新函数
+      function refreshScreenshots() {
+        fetch("/api/screenshots")
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.length === 0) {
+              noScreenshotsMessage.classList.remove("hidden");
+              screenshotsContainer.innerHTML = "";
+              currentScreenshots = [];
+            } else {
+              noScreenshotsMessage.classList.add("hidden");
+
+              // 检查是否有新截图
+              const newScreenshots = data.filter(
+                (screenshot) =>
+                  !currentScreenshots.includes(screenshot.timestamp)
+              );
+
+              // 检查是否有被删除的截图
+              const remainingScreenshots = currentScreenshots.filter(
+                (timestamp) => data.some((s) => s.timestamp === timestamp)
+              );
+
+              // 只有当数据有变化时才更新DOM
+              if (
+                newScreenshots.length > 0 ||
+                remainingScreenshots.length !== currentScreenshots.length
+              ) {
+                let html = "";
+                data.forEach((screenshot) => {
+                  html += createScreenshotCard(screenshot);
+                });
+                screenshotsContainer.innerHTML = html;
+
+                // 更新当前截图列表
+                currentScreenshots = data.map(
+                  (screenshot) => screenshot.timestamp
+                );
+
+                // 如果有新截图，显示通知
+                if (newScreenshots.length > 0) {
+                  console.log(`获取到${newScreenshots.length}个新截图`);
+                }
+              }
+            }
+
+            // 更新最后刷新时间
+            updateLastRefreshTime();
+          })
+          .catch((error) => {
+            console.error("刷新截图失败:", error);
+          });
+      }
+
+      // 初始化
+      updateLastRefreshTime();
+
+      // 定时刷新（每10秒）
+      setInterval(refreshScreenshots, 10000);
     </script>
   </body>
 </html>

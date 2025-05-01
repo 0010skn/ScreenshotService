@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# 虚拟环境
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+
+# 保留static目录结构，但忽略具体截图文件
+!app/static/
+!app/static/screenshots/
+!app/static/screenshots/thumbnails/
+app/static/screenshots/*.png
+app/static/screenshots/thumbnails/*.png
+
+# 通过在static目录下放置.gitkeep文件，确保目录结构被提交 

@@ -66,14 +66,23 @@ def take_screenshot():
                 "timestamp": timestamp
             })
             
+            # 按时间倒序排序（确保最新的在前面）
+            screenshots.sort(key=lambda x: x["timestamp"], reverse=True)
+            
             # 如果超过最大数量，删除最早的截屏
             if len(screenshots) > MAX_SCREENSHOTS:
-                oldest = screenshots.pop(0)
-                os.remove(SCREENSHOTS_DIR / oldest["filename"])
-                os.remove(THUMBNAILS_DIR / f"thumbnail_{oldest['timestamp']}.png")
-            
-            # 按时间倒序排序
-            screenshots.sort(key=lambda x: x["timestamp"], reverse=True)
+                # 因为已经按时间倒序排序，最早的截屏是列表的最后一项
+                oldest = screenshots.pop(-1)
+                oldest_file = SCREENSHOTS_DIR / oldest["filename"]
+                oldest_thumbnail = THUMBNAILS_DIR / f"thumbnail_{oldest['timestamp']}.png"
+                
+                # 删除文件（如果存在）
+                if os.path.exists(oldest_file):
+                    os.remove(oldest_file)
+                if os.path.exists(oldest_thumbnail):
+                    os.remove(oldest_thumbnail)
+                
+                print(f"删除旧截图: {oldest['filename']}")
             
             print(f"截图完成: {timestamp}，缩略图路径: screenshots/thumbnails/thumbnail_{timestamp}.png")
             
