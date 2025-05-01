@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>服务器截屏监控</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .screenshot-card:hover .hover-overlay {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+      <header class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800">服务器截屏监控</h1>
+        <p class="text-gray-600">自动每分钟截屏一次，最多保留最新的10张截屏</p>
+      </header>
+
+      <!-- 截屏预览区域 -->
+      <div
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+      >
+        {% for screenshot in screenshots %}
+        <div
+          class="bg-white rounded-lg shadow-md overflow-hidden screenshot-card relative"
+        >
+          <div class="relative">
+            <img
+              src="{{ url_for('static', path=screenshot.thumbnail) }}"
+              alt="截屏预览"
+              class="w-full h-48 object-cover"
+            />
+            <div
+              class="hover-overlay absolute inset-0 bg-black bg-opacity-50 opacity-0 transition-opacity flex items-center justify-center"
+            >
+              <a
+                href="{{ url_for('static', path='screenshots/' + screenshot.filename) }}"
+                target="_blank"
+                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition"
+                >查看原图</a
+              >
+            </div>
+          </div>
+          <div class="p-4">
+            <p class="text-gray-700 font-medium">截屏时间</p>
+            <p class="text-gray-500">{{ screenshot.datetime }}</p>
+            <div class="mt-2 flex justify-between">
+              <a
+                href="{{ url_for('static', path='screenshots/' + screenshot.filename) }}"
+                download
+                class="text-blue-500 hover:text-blue-700 text-sm"
+                >下载</a
+              >
+              <a
+                href="/api/screenshot/{{ screenshot.timestamp }}"
+                class="text-green-500 hover:text-green-700 text-sm"
+                >API 链接</a
+              >
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- 无截屏时显示提示 -->
+      {% if not screenshots %}
+      <div class="text-center py-12">
+        <p class="text-gray-600 text-lg">目前还没有截屏，请等待...</p>
+      </div>
+      {% endif %}
+
+      <!-- API 信息 -->
+      <div class="mt-12 bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">API 接口</h2>
+        <div class="space-y-4">
+          <div>
+            <h3 class="font-medium text-gray-700">获取所有截屏列表：</h3>
+            <code class="bg-gray-100 px-2 py-1 rounded text-sm"
+              >/api/screenshots</code
+            >
+          </div>
+          <div>
+            <h3 class="font-medium text-gray-700">获取特定截屏：</h3>
+            <code class="bg-gray-100 px-2 py-1 rounded text-sm"
+              >/api/screenshot/{timestamp}</code
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- 页脚 -->
+      <footer class="mt-12 text-center text-gray-500 text-sm">
+        <p>截屏服务 &copy; {{ now().year }}</p>
+      </footer>
+    </div>
+
+    <script>
+      // 自动刷新页面
+      setTimeout(function () {
+        location.reload();
+      }, 60000); // 每1分钟刷新一次
+    </script>
+  </body>
+</html>
