@@ -77,8 +77,8 @@ def take_screenshot():
             
             print(f"截图完成: {timestamp}，缩略图路径: screenshots/thumbnails/thumbnail_{timestamp}.png")
             
-            # 每分钟截屏一次
-            time.sleep(60)
+            # 每10秒截屏一次
+            time.sleep(10)
         except Exception as e:
             print(f"截屏出错: {e}")
             time.sleep(10)  # 出错后稍等一会再重试
