@@ -20,28 +20,27 @@
 
 1. 克隆或下载此代码库到您的服务器
 
-2. 创建并激活虚拟环境
+2. 使用自动启动脚本（推荐）
 
-```bash
-python -m venv venv
-source venv/Scripts/activate  # Windows
-# 或
-source venv/bin/activate  # Linux/Mac
+```
+双击运行 start.bat
 ```
 
-3. 安装依赖
+该脚本会自动检查 Python 环境，安装所需依赖并启动应用。
+
+3. 手动安装与运行
+
+如果您希望手动安装和启动应用，可以按以下步骤操作：
 
 ```bash
-pip install fastapi uvicorn python-multipart pillow pyautogui jinja2
-```
+# 安装依赖
+pip install -r requirements.txt
 
-4. 运行应用
-
-```bash
+# 启动应用
 python -m app.main
 ```
 
-5. 访问服务
+4. 访问服务
 
 应用启动后，可通过浏览器访问：http://localhost:8000
 
