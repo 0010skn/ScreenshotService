@@ -66,13 +66,23 @@ docker build -t screenshot-service .
 docker run -d -p 8000:8000 --name screenshot-service screenshot-service
 ```
 
-#### 使用预构建的 Docker 镜像
+#### 使用 GitHub Actions 构建的镜像文件
 
-本项目通过 GitHub Actions 自动构建并发布 Docker 镜像，您可以直接使用:
+本项目使用 GitHub Actions 自动构建 Docker 镜像并保存为 tar 文件。您可以下载并使用这些镜像文件：
+
+1. 在项目的 GitHub 页面上，进入 Actions 标签页
+2. 选择最新的成功构建
+3. 在构建详情页面，下载 "screenshot-service-image" 制品
+4. 加载镜像文件:
 
 ```bash
-docker pull ghcr.io/yourusername/screenshot-service:latest
-docker run -d -p 8000:8000 --name screenshot-service ghcr.io/yourusername/screenshot-service:latest
+docker load < screenshot-service-YYYYMMDD-COMMITHASH.tar
+```
+
+5. 运行容器:
+
+```bash
+docker run -d -p 8000:8000 --name screenshot-service screenshot-service:YYYYMMDD-COMMITHASH
 ```
 
 ### API 接口

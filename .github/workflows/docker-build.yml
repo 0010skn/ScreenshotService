@@ -17,6 +17,14 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          buildkitd-flags: --debug
+
+      - name: Verify dependencies
+        run: |
+          echo "检查requirements.txt文件内容："
+          cat requirements.txt
+          echo "-------------------------------"
 
       - name: Get current date
         id: date
@@ -29,15 +37,28 @@ jobs:
           push: false
           tags: screenshot-service:${{ steps.date.outputs.date }}-${{ github.sha }}
           load: true
+          cache-from: type=gha,scope=build-cache
+          cache-to: type=gha,scope=build-cache,mode=max
+          outputs: type=docker,dest=/tmp/screenshot-service.tar
 
-      - name: Export Docker image to tar file
+      - name: Prepare Docker image
         run: |
           mkdir -p ./docker-images
-          docker save screenshot-service:${{ steps.date.outputs.date }}-${{ github.sha }} > ./docker-images/screenshot-service-${{ steps.date.outputs.date }}-${{ github.sha }}.tar
+          cp /tmp/screenshot-service.tar ./docker-images/screenshot-service-${{ steps.date.outputs.date }}-${{ github.sha }}.tar
+          ls -la ./docker-images/
+
+      - name: Generate image info
+        run: |
+          echo "构建时间: $(date)" > ./docker-images/IMAGE_INFO.txt
+          echo "提交SHA: ${{ github.sha }}" >> ./docker-images/IMAGE_INFO.txt
+          echo "分支: ${{ github.ref_name }}" >> ./docker-images/IMAGE_INFO.txt
+          echo "版本标签: ${{ steps.date.outputs.date }}-${{ github.sha }}" >> ./docker-images/IMAGE_INFO.txt
 
       - name: Upload Docker image tar as artifact
         uses: actions/upload-artifact@v4
         with:
           name: screenshot-service-image
-          path: ./docker-images/screenshot-service-${{ steps.date.outputs.date }}-${{ github.sha }}.tar
+          path: |
+            ./docker-images/screenshot-service-${{ steps.date.outputs.date }}-${{ github.sha }}.tar
+            ./docker-images/IMAGE_INFO.txt
           retention-days: 7

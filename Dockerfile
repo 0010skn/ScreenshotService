@@ -13,11 +13,17 @@ RUN apt-get update && apt-get install -y \
 # 设置工作目录
 WORKDIR /app
 
+# 配置pip镜像源以提高下载速度和可靠性
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/ \
+    && pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn \
+    && pip install --no-cache-dir --upgrade pip setuptools wheel
+
 # 复制依赖文件
 COPY requirements.txt .
 
-# 安装Python依赖
-RUN pip install --no-cache-dir -r requirements.txt
+# 分步安装Python依赖以提高构建稳定性
+RUN pip install --no-cache-dir -r requirements.txt || \
+    (pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt)
 
 # 复制应用代码
 COPY . .
