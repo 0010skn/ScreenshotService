@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  screenshot-service:
+    build: .
+    container_name: screenshot-service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app/static/screenshots:/app/app/static/screenshots
+    environment:
+      - TZ=Asia/Shanghai
+      - PYTHONUNBUFFERED=1
+      - DISPLAY=:99

@@ -37,6 +37,44 @@ Demo 地址：https://160.744000.xyz/
 3. 运行应用: `python -m app.main`
 4. 访问 http://localhost:8000 查看界面
 
+### 使用 Docker 运行
+
+本项目提供了 Docker 支持，可以方便地使用 Docker 部署和运行。
+
+#### 使用 Docker Compose
+
+1. 确保已安装 Docker 和 Docker Compose
+2. 运行以下命令启动服务:
+
+```bash
+docker-compose up -d
+```
+
+3. 访问 http://localhost:8000 查看界面
+
+#### 使用 Docker 镜像
+
+1. 构建 Docker 镜像:
+
+```bash
+docker build -t screenshot-service .
+```
+
+2. 运行 Docker 容器:
+
+```bash
+docker run -d -p 8000:8000 --name screenshot-service screenshot-service
+```
+
+#### 使用预构建的 Docker 镜像
+
+本项目通过 GitHub Actions 自动构建并发布 Docker 镜像，您可以直接使用:
+
+```bash
+docker pull ghcr.io/yourusername/screenshot-service:latest
+docker run -d -p 8000:8000 --name screenshot-service ghcr.io/yourusername/screenshot-service:latest
+```
+
 ### API 接口
 
 - `/api/screenshots` - 获取所有截图列表
@@ -74,3 +112,4 @@ Demo 地址：https://160.744000.xyz/
 - 此应用需要在图形界面环境中运行，无法在纯命令行环境（如服务器的 SSH 会话）中使用
 - 由于使用了 pyautogui 进行截屏，应用需要适当的屏幕访问权限
 - 如果作为长期服务运行，建议使用 supervisor 或系统服务来管理
+- 在 Docker 环境中，应用使用 Xvfb 虚拟显示服务器来支持截图功能
